@@ -15,7 +15,7 @@ The save functions works in reverse of the import function.  The save function w
 
 ## Contributors
 * [Andy Robinson](mailto:andy@phase2automation.com), Principal of [Phase 2 Automation](http://phase2automation.com).
-* Billy Rios of Laconicly
+* Anonymous - a special thanks to an anonymous contributor who provided code and inspiration to finish the work that I started long ago.  Thanks!
 
 ## License
 

@@ -14,8 +14,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-
-
+Option Explicit
 
 Private Sub btnClearLog_Click()
     ClearLog
@@ -36,13 +35,14 @@ End Sub
 
 Sub ImportGalaxyCSV(OpenFileName As String)
 
-    If FileName = "False" Then
+
+    If OpenFileName = "False" Then
         Log ("No valid file selected")
     Else
     
         Log ("Opening File " & OpenFileName)
             
-        Workbooks.OpenText FileName:= _
+        Workbooks.OpenText Filename:= _
             OpenFileName, _
             Origin:=65001, StartRow:=1, DataType:=xlDelimited, TextQualifier:= _
             xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=False, Semicolon:=False _
@@ -57,7 +57,7 @@ Sub ImportGalaxyCSV(OpenFileName As String)
         
         Log SaveFileName(OpenFileName)
         
-        Application.ActiveWorkbook.SaveAs FileName:=SaveFileName(OpenFileName), FileFormat:=xlWorkbookDefault
+        Application.ActiveWorkbook.SaveAs Filename:=SaveFileName(OpenFileName), FileFormat:=xlWorkbookDefault
         
         Log ("Saved as Excel File")
         
@@ -132,6 +132,8 @@ End Function
 Sub DeleteWorksheetIfExists(WorkSheetName As String)
 
     Dim ws As Worksheet
+    Dim wsName As String
+    
     
     wsName = UCase(WorkSheetName)
     
@@ -158,7 +160,7 @@ Function MoveTemplateToNewWorksheet(TemplateCell As Range) As Worksheet
     ' Delete the old one if it existss
     DeleteWorksheetIfExists (TemplateName)
     
-    Set NewWorksheet = Worksheets.Add(After:=Worksheets(Worksheets.count))
+    Set NewWorksheet = Worksheets.Add(After:=Worksheets(Worksheets.Count))
     
     NewWorksheet.Name = TemplateName
     
@@ -205,7 +207,7 @@ Function CreateExportWorksheet(WorkSheetName) As Worksheet
     ' Delete the old one if it existss
     DeleteWorksheetIfExists (WorkSheetName)
     
-    Set NewWorksheet = Worksheets.Add(After:=Worksheets(Worksheets.count))
+    Set NewWorksheet = Worksheets.Add(After:=Worksheets(Worksheets.Count))
     
     NewWorksheet.Name = WorkSheetName
             
@@ -247,7 +249,7 @@ Function CopyTemplatesToExportWorksheet(ByRef ExportWorksheet) As Boolean
     
     If optAllSheets.Value Then
         For Each ws In ActiveWorkbook.Sheets
-            If (GetTemplateCellAddesses(ws).count > 0) And (ws.Name <> ExportWorksheet.Name) Then
+            If (GetTemplateCellAddesses(ws).Count > 0) And (ws.Name <> ExportWorksheet.Name) Then
                 SheetsList.Add ws
             End If
         Next
@@ -268,10 +270,10 @@ Function CopyTemplatesToExportWorksheet(ByRef ExportWorksheet) As Boolean
     End If
     
     ' If none to export then bail
-    If SheetsList.count = 0 Then
-        'MsgBox "No sheets selected for export.", vbCritical + vbOKOnly
+    If SheetsList.Count = 0 Then
+        Log "No sheets selected for export."
         CopyTemplatesToExportWorksheet = False
-        Return
+        Exit Function
     End If
                 
     ' Add a note at the top about who and when
@@ -284,7 +286,7 @@ Function CopyTemplatesToExportWorksheet(ByRef ExportWorksheet) As Boolean
         If (ws.Name <> ExportWorksheet.Name) Then
             Log ("Copying " & ws.Name & " for export")
             ws.Range("A1").CurrentRegion.Copy ExportWorksheet.Cells(FirstBlankRow, 1)
-            PastedRowCount = ExportWorksheet.Range("A" & FirstBlankRow).CurrentRegion.Rows.count
+            PastedRowCount = ExportWorksheet.Range("A" & FirstBlankRow).CurrentRegion.Rows.Count
             FirstBlankRow = PastedRowCount + FirstBlankRow + 1
         End If
     Next
@@ -329,7 +331,7 @@ Function ExportSpecificWorksheet(ByRef ExportWorksheet)
     Dim oldFormat As Integer
     Dim ExportFileName As String
     
-    ExportFileName = Application.GetSaveAsFilename(fileFilter:="Excel Files (*.csv), *.csv")
+    ExportFileName = Application.GetSaveAsFilename(fileFilter:="CSV File (*.csv), *.csv")
       
     ' Turn off alerts
     Application.DisplayAlerts = False  'avoid safetey alert
@@ -342,15 +344,102 @@ Function ExportSpecificWorksheet(ByRef ExportWorksheet)
     End With
 
     ' Export the CSV
-    ExportWorksheet.SaveAs FileName:=ExportFileName, FileFormat:=xlCSV
-    
+    SaveUTF8CSV ExportWorksheet, ExportFileName
+     
     Log ("Saved to " & ExportFileName)
     
     ' Save Back as Old Format
-    ActiveWorkbook.SaveAs FileName:=oldpath + "\" + oldname, FileFormat:=oldFormat
+    ActiveWorkbook.SaveAs Filename:=oldpath + "\" + oldname, FileFormat:=oldFormat
     
     Application.DisplayAlerts = True
     
+End Function
+
+Private Sub SaveUTF8CSV(ByRef ExportWorksheet, Filename As String)
+
+    Dim ColumnCount, RowCount As Integer, columnNumber, rowNumber As Integer
+    Dim line, cellText As String
+    
+    Dim ObjStream As ADODB.Stream
+    
+    ' init stream
+    Set ObjStream = New ADODB.Stream
+    ObjStream.Open
+    ObjStream.Charset = "utf-8"
+    ObjStream.Type = adTypeText
+    ObjStream.LineSeparator = adCRLF
+    ObjStream.Position = 0
+    
+    ' Get the worksheet into a CSV form and write to object stream
+    GetWorksheetCSVToStream ExportWorksheet, ObjStream
+    
+    ObjStream.SaveToFile Filename, adSaveCreateOverWrite
+    
+    ' close up and return
+    ObjStream.Close
+    Set ObjStream = Nothing
+
+End Sub
+
+Private Function GetWorksheetCSVToStream(ByRef ExportWorksheet, ByRef ObjStream As ADODB.Stream)
+
+    Dim ColumnCount, RowCount As Integer, columnNumber, rowNumber As Integer
+    Dim line, cellText As String
+    Dim TagRow As Boolean
+    
+    ColumnCount = ExportWorksheet.UsedRange.Columns.Count
+    RowCount = ExportWorksheet.UsedRange.Rows.Count
+    
+    With ExportWorksheet.UsedRange
+     For rowNumber = 1 To RowCount
+     
+       line = ""
+       
+       ' Determine if this is a row with a tag
+       TagRow = IsTagRow(.Cells(rowNumber, 1).Text)
+       
+       For columnNumber = 1 To ColumnCount
+       
+        cellText = .Cells(rowNumber, columnNumber).Text
+        
+        If TagRow Then
+            cellText = """" & Replace(cellText, """", """""") & """"
+        End If
+        
+        ' Add any other special cases to manage here
+        
+        ' Add the trailing ,
+        line = line & cellText & ","
+        
+       Next columnNumber
+      ObjStream.WriteText line, adWriteLine
+     Next rowNumber
+    End With
+    
+End Function
+
+Private Function IsTagRow(CellData As String)
+
+' Determine if this row is a row with tag data by inspecting the first cell's data
+
+    If CellData = "" Then
+        IsTagRow = False
+        Exit Function
+    End If
+    
+    If Left(CellData, 1) = ";" Then
+        IsTagRow = False
+        Exit Function
+    End If
+    
+    If Left(CellData, 1) = ":" Then
+        IsTagRow = False
+        Exit Function
+    End If
+    
+    IsTagRow = True
+    
+
 End Function
 
 Private Sub optAllSheets_Click()
@@ -368,7 +457,7 @@ Private Sub optSelectedSheets_Click()
     lstSheets.Clear
 
     For Each ws In ActiveWorkbook.Sheets
-        If (GetTemplateCellAddesses(ws).count > 0) Then
+        If (GetTemplateCellAddesses(ws).Count > 0) Then
             lstSheets.AddItem ws.Name
         End If
     Next

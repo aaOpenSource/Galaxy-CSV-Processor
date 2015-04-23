@@ -5,6 +5,8 @@ This code is meant to be used within an Excel VBA project to assist with the imp
 
 ##Installation
 To "install" you should create a macro enabled workbook and import the three files.  There is a single form where the user can execute the functions.  Someone smarter than me can probably help put together a nice package or set of instructions for creating menus or buttons to run the functions.
+
+Also due to custom export function you will need to add a reference to Microsoft ActiveX Data Objects 2.5 Library under Tool->References when yoou are in VBA editor.
  
 ## Functions
 ###Import

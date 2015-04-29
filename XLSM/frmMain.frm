@@ -1,10 +1,10 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} frmMain 
    Caption         =   "Galaxy CSV Processor"
-   ClientHeight    =   3915
+   ClientHeight    =   7275
    ClientLeft      =   45
    ClientTop       =   375
-   ClientWidth     =   8370
+   ClientWidth     =   12735
    OleObjectBlob   =   "frmMain.frx":0000
    ShowModal       =   0   'False
    StartUpPosition =   1  'CenterOwner
@@ -14,7 +14,27 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
 Option Explicit
+
+Private Sub Notes()
+
+' For the code to run you must add a reference to ADO, Microsoft Active Data Objects.  I typically run with 2.6 but you can try lower.
+'
+'
+'
+'
+'
+'
+'
+'
+'
+'
+'
+'
+
+
+End Sub
 
 Private Sub btnClearLog_Click()
     ClearLog
@@ -164,7 +184,13 @@ Function MoveTemplateToNewWorksheet(TemplateCell As Range) As Worksheet
     
     NewWorksheet.Name = TemplateName
     
+    ' Copy the contents of the template region to the new worksheet
     TemplateCell.CurrentRegion.Copy NewWorksheet.Cells(1, 1)
+    
+    If ckAutoWiden.Value Then
+       NewWorksheet.Cells.EntireColumn.AutoFit
+    End If
+    
         
     Set MoveTemplateToNewWorksheet = NewWorksheet
     
@@ -442,6 +468,10 @@ Private Function IsTagRow(CellData As String)
 
 End Function
 
+Private Sub ckAutoWiden_Click()
+
+End Sub
+
 Private Sub optAllSheets_Click()
 
     lstSheets.Visible = (optSelectedSheets)
@@ -462,4 +492,8 @@ Private Sub optSelectedSheets_Click()
         End If
     Next
     
+End Sub
+
+Private Sub TabStrip1_Change()
+
 End Sub

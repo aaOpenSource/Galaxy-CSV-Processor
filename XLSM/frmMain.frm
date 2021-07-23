@@ -426,7 +426,7 @@ Private Function GetWorksheetCSVToStream(ByRef ExportWorksheet, ByRef ObjStream 
        
        For columnNumber = 1 To ColumnCount
        
-        cellText = .Cells(rowNumber, columnNumber).Text
+        cellText = .Cells(rowNumber, columnNumber).Value
         
         If TagRow Then
             cellText = """" & Replace(cellText, """", """""") & """"
